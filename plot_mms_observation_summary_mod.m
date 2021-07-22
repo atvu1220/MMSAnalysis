@@ -1,0 +1,157 @@
+function [shock_normal,n_cs,r_sc] = plot_mms_observation_summary_mod(date_start,date_end,...
+        mec_timedata,mec_r_gsedata,fgm_timedata, fgm_bdata,...
+        fpi_e_timedata,fpi_e_ndata,fpi_e_vdata,fpi_e_tparadata,fpi_e_tperpdata,fpi_e_edata,fpi_e_espectdata,...
+        fpi_i_timedata,fpi_i_ndata,fpi_i_vdata,fpi_i_tparadata,fpi_i_tperpdata,fpi_i_edata,fpi_i_espectdata,...
+        n_cs)
+    %Matlab CDF Plotter for MMS
+    %Andrew Vu 9/19/18
+    %data=spdfcdfread(filename);
+    %datainfo=spdfcdfinfo(filename);
+    figure('Position',[1 1 650 850])
+    co = [0 0 1;
+        0 1 0;
+        1 0 0;
+        0 0 0];
+    set(gcf,'defaultAxesColorOrder',co)
+    set(gcf,'color','w');
+    plot_gap=1.25;
+    %cd '~/Library/Mobile Documents/com~apple~CloudDocs/Research/Analysis'
+    %figure('PaperPositionMode', 'auto')
+    probe_num = '1';
+    num_plots = 9;
+    data_type = 'brst';
+    % date = '2018/03/18';
+    
+   
+    formatIn='yyyy-mm-dd HH:MM:SS.FFF';
+    
+    tstart = datenum(date_start,formatIn);
+    tend = datenum(date_end,formatIn);
+    
+    
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%Position Data%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %load mec data
+    % [mec_timedata,mec_r_gsedata] = load_mec(date_start,probe_num,'srvy');
+    
+    % %Find the start and end limits of the event in the data
+    % start_index_r = find(mec_timedata > tstart, 1);
+    % end_index_r = find(mec_timedata > tend, 1);
+    %
+    % %Convert the datetime to date String, and then crop to our event timeframe
+    % mec_timedata = mec_timedata(start_index_r:end_index_r,1);
+    % mec_r_gsedata = mec_r_gsedata(start_index_r:end_index_r,:)/6371.2;
+    
+    [~,mec_r_gsedata,~,~] = crop(mec_timedata,mec_r_gsedata,date_start,date_end);
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%Load Data%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%     
+%     %load fgm data
+%     [fgm_timedata, fgm_bdata,~,~]= load_fgm(date_start,probe_num,data_type);
+%     
+%     %Load FPI_e
+%     [fpi_e_timedata,fpi_e_ndata,fpi_e_vdata,fpi_e_tparadata,fpi_e_tperpdata,...
+%         fpi_e_edata,fpi_e_espectdata] = load_fpi(date_start,probe_num,data_type,'e');
+%     %Load FPI_i
+%     [fpi_i_timedata,fpi_i_ndata,fpi_i_vdata,fpi_i_tparadata,fpi_i_tperpdata,...
+%         fpi_i_edata,fpi_i_espectdata] = load_fpi(date_start,probe_num,data_type,'i');
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%Plot Data%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    plot_order = 1;
+    %Plot Magnetic Fields
+    plot_fgm_magnetic(date_start,date_end,fgm_timedata,fgm_bdata,num_plots,plot_order)
+    title('MMS1 Observatory Summary', 'FontSize', 18, 'FontWeight', 'normal')
+    plot_pos = get(gca,'Position');
+    set(gca,'Position',[plot_pos(1), plot_pos(2)-plot_pos(4)*plot_gap*(plot_order-1), plot_pos(3), plot_pos(4)]);
+    plot_order = plot_order+1;
+    
+    
+    %Plot FPI number density
+    plot_fpi_number(date_start,date_end,fpi_i_timedata,fpi_i_ndata,num_plots,plot_order,'i')
+    hold on
+    plot_fpi_number(date_start,date_end,fpi_e_timedata,fpi_e_ndata,num_plots,plot_order,'e')
+    hold off
+    set(gca,'Position',[plot_pos(1), plot_pos(2)-plot_pos(4)*plot_gap*(plot_order-1), plot_pos(3), plot_pos(4)]);
+    plot_order = plot_order+1;
+    
+    %Plot FPI velocity data
+    plot_fpi_bulkv(date_start,date_end,fpi_i_timedata,fpi_i_vdata,num_plots,plot_order)
+    set(gca,'Position',[plot_pos(1), plot_pos(2)-plot_pos(4)*plot_gap*(plot_order-1), plot_pos(3), plot_pos(4)]);
+    plot_order = plot_order+1;
+    
+    %Plot FPI dynamic pressure
+    plot_fpi_dynamic_pressure(date_start,date_end,fpi_i_timedata,fpi_i_ndata,fpi_i_vdata,num_plots,plot_order,'i')
+    hold on
+    plot_fpi_dynamic_pressure(date_start,date_end,fpi_e_timedata,fpi_e_ndata,fpi_e_vdata,num_plots,plot_order,'e')
+    hold off
+    set(gca,'Position',[plot_pos(1), plot_pos(2)-plot_pos(4)*plot_gap*(plot_order-1), plot_pos(3), plot_pos(4)]);
+    plot_order = plot_order+1;
+    
+    %Plot -VxB
+    plot_vcrossb(date_start,date_end,fgm_timedata,fgm_bdata,fpi_i_timedata,fpi_i_vdata,num_plots,plot_order,'n_cs')
+    set(gca,'Position',[plot_pos(1), plot_pos(2)-plot_pos(4)*plot_gap*(plot_order-1), plot_pos(3), plot_pos(4)]);
+    plot_order = plot_order+1;
+    %leading edge negative edot n_td means towards the discontinuity and
+    %positive edot n_td means towards the discontinuity
+    
+    [shock_normal,r_sc] = calculate_bowshocknormal(date_start,mec_r_gsedata,fpi_i_timedata,fpi_i_ndata,fpi_i_vdata)
+    
+    %Plot shock angles
+    plot_shockangle(date_start,date_end,fgm_timedata,fgm_bdata,num_plots,plot_order,shock_normal)
+    set(gca,'Position',[plot_pos(1), plot_pos(2)-plot_pos(4)*plot_gap*(plot_order-1), plot_pos(3), plot_pos(4)]);
+    plot_order = plot_order+1;
+    
+    
+    %Plot Temperatures
+    plot_fpi_temp(date_start,date_end,fpi_i_timedata,fpi_i_tparadata,fpi_i_tperpdata,num_plots,plot_order,'i')
+    hold on
+    plot_fpi_temp(date_start,date_end,fpi_e_timedata,fpi_e_tparadata,fpi_e_tperpdata,num_plots,plot_order,'e')
+    hold off
+    set(gca,'Position',[plot_pos(1), plot_pos(2)-plot_pos(4)*plot_gap*(plot_order-1), plot_pos(3), plot_pos(4)]);
+    plot_order = plot_order+1;
+    
+    %Energy Spectrum for Ions
+    plot_fpi_energyspect(date_start,date_end,fpi_i_timedata,fpi_i_edata,fpi_i_espectdata,num_plots,plot_order)
+    set(gca,'Position',[plot_pos(1), plot_pos(2)-plot_pos(4)*plot_gap*(plot_order-1), plot_pos(3), plot_pos(4)]);
+    yticks([1,2,3,4])
+    plot_order = plot_order+1;
+    
+    %Energy Spectrum for Electrons
+    plot_fpi_energyspect(date_start,date_end,fpi_e_timedata,fpi_e_edata,fpi_e_espectdata,num_plots,plot_order)
+    
+    set(gca,'Position',[plot_pos(1), plot_pos(2)-plot_pos(4)*plot_gap*(plot_order-1), plot_pos(3), plot_pos(4)]);
+    yticks([1,2,3,4])
+    datetick('keeplimits')
+    plot_order = plot_order+1;
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    
+    annotation('textbox',[plot_pos(1)-plot_pos(4), plot_pos(2)-plot_pos(4)*plot_gap*(plot_order-1), plot_pos(3), plot_pos(4)],...
+        'String',{datestr(tstart,'YYYY mmm dd'),'X-GSE (Re):', 'Y-GSE (Re):', 'Z-GSE (Re):'},...
+        'VerticalAlignment','Top','Edgecolor','none','FontSize', 14);
+    %
+    r_cols = length(mec_r_gsedata);
+    %n_cs = tdnormal(date_start,date_end,fgm_timedata,fgm_bdata,'event'); %(-X) GSE for current sheet normal
+    annotation('textbox',[plot_pos(1)+plot_pos(3)/r_cols+0.05, plot_pos(2)-plot_pos(4)*plot_gap*(plot_order-1), plot_pos(3), plot_pos(4)],...
+        'String',{'',num2str(round(mec_r_gsedata(1,:)/6371.2*10)/10,'%2g\n')},...
+        'VerticalAlignment','Top','Edgecolor','none','FontSize', 14);
+    
+    annotation('textbox',[plot_pos(1)+plot_pos(3)/r_cols+0.05*4 plot_pos(2)-plot_pos(4)*plot_gap*(plot_order-1), plot_pos(3), plot_pos(4)],...
+        'String',{strcat('n_{cs}: [',num2str(n_cs,'%.4f '),']'),strcat('n_{bs}: [',num2str(shock_normal,'%.4f '),']')},...
+        'VerticalAlignment','Top','Edgecolor','none','FontSize', 14);
+    
+    %
+    % annotation('textbox',[plot_pos(1)+2*(plot_pos(3)/r_cols)+0.025, plot_pos(2)-plot_pos(4)*7.5, plot_pos(3), plot_pos(4)],...
+    %     'String',{'',num2str(round(mec_r_gsedata(1,:)*10)/10,'%2g\n')},...
+    %     'VerticalAlignment','Top','Edgecolor','none','FontSize', 14);
+    
+    
+    plot_name =  strcat('1_ObservationSummary_',date_start(1:19),'_',date_end(12:19),'.pdf');
+    print(gcf, '-dpdf', '-opengl',plot_name,'-fillpage');
+    %movefile(plot_name, '~/Library/Mobile Documents/com~apple~CloudDocs/Research/Analysis')
+    
+end
